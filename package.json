@@ -1,0 +1,19 @@
+{
+  "name": "log-ingester",
+  "version": "1.0.0",
+  "description": "Simple node log ingester",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/concord-consortium/log-ingester.git"
+  },
+  "author": "Doug Martin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/concord-consortium/log-ingester/issues"
+  },
+  "homepage": "https://github.com/concord-consortium/log-ingester#readme"
+}
