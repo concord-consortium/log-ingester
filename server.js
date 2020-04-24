@@ -1,86 +1,197 @@
 const http = require('http');
-const canonicalize = require('./canonicalize');
+const { canonicalize } = require('./canonicalize');
+
+const shutdownServer = (options) => {
+  const {server, disconnectDB, client, exit, log} = options;
+  const logMessage = log ? (message) => console.log(message) : () => undefined;
+
+  return new Promise(resolve => {
+    if (server.shuttingDown) {
+      resolve();
+    }
+    server.shuttingDown = true;
+
+    logMessage("Shutting down server...");
+    server.close(async () => {
+      logMessage("HTTP server closed, disconnecting from database");
+      await disconnectDB(client);
+      if (exit) {
+        logMessage("Exiting...");
+        process.exit(0);
+      }
+      resolve();
+    });
+  });
+}
 
 const createServer = async (options) => {
 
-  const {port, connectDB, disconnectDB, insertIntoDB} = options;
+  // all options are required expect for fakeClient
+  options = options || {};
+  const {port, connectDB, disconnectDB, insertIntoDB, fakeClient, log} = options;
+  if (!port || !connectDB || !disconnectDB || !insertIntoDB) {
+    throw new Error("Missing required options!");
+  }
 
-  const client = await connectDB({ fake: true });
+  const startedAt = (new Date()).toString();
+  const serverId = Math.round(Math.random() * 100000000);
+  const allRequestsStats = {
+    allowedRequests: 0,
+    fileNotFound: 0,
+    total: 0,
+  };
+  const allowedRequestStats = {};
+  const lastTenRequests = [];
+  const lastTenFailedParses = [];
+  const lastTenFileNotFound = [];
+
+  const client = await connectDB({ fakeClient });
+
+  const allowedRequests = ["GET /stats", "POST /api/logs"]
+
+  const truncate = (s) => s.length < 128 ? s : `${s.substr(0, 128)}... (TRUNCATED)`;
+
+  const getBody = async (req) => {
+    return new Promise((resolve) => {
+      if ((req.method === "POST") && (req.url === "/api/logs")) {
+        let data = [];
+        req.on("data", chunk => data.push(chunk));
+        req.on("end", () => {
+          resolve(data.join(""));
+        });
+      } else {
+        resolve(undefined);
+      }
+    })
+  }
 
   const requestHandler = (req, resp) => {
-    const logEntry = () => `${(new Date()).toString()} ${req.method} ${req.url}`;
+    getBody(req).then(body => {
+      const logEntry = () => {
+        return `${(new Date()).toString()} ${truncate(req.method)} ${truncate(req.url)}${body !== undefined ? ` (${body.length} bytes)` : ""}`;
+      }
 
-    console.log(logEntry());
+      allRequestsStats.total++;
 
-    switch (req.url) {
-      case "/api/logs":
-        if (req.method === "POST") {
-          const timestamp = Math.round(Date.now() / 1000);
-          let data = [];
-          req.on("data", chunk => data.push(chunk));
-          req.on("end", async () => {
-            data = data.join("");
+      while (lastTenRequests.length > 9) {
+        lastTenRequests.shift();
+      }
+      lastTenRequests.push(logEntry());
+      if (log) {
+        console.log(logEntry());
+      }
+
+      let stats;
+      const requestKey = `${req.method.toUpperCase()} ${req.url}`;
+      if (allowedRequests.indexOf(requestKey) !== -1) {
+        stats = allowedRequestStats[requestKey] = allowedRequestStats[requestKey] || {};
+        stats.total = stats.total || 0;
+        stats.total++;
+        allRequestsStats.allowedRequests++;
+      }
+
+      switch (req.url) {
+        case "/stats":
+          resp.setHeader("Content-Type", "application/json");
+          resp.end(JSON.stringify({serverId, startedAt, allRequestsStats, allowedRequestsStats: allowedRequestStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound}, null, 2));
+          break;
+
+        case "/api/logs":
+          if (req.method === "POST") {
+            const timestamp = Math.round(Date.now() / 1000);
+            let json;
+
+            stats.bytes = stats.bytes || 0;
+            stats.bytes += body.length;
+
             try {
-              result = await insertIntoDB(client, canonicalize(JSON.parse(data), timestamp), data);
+              json = JSON.parse(body);
+            } catch (e) {
+              resp.statusCode = 500;
+              resp.end(`Unable to parse body: ${e.toString()}`);
+              if (log) {
+                console.error(`${logEntry()}: ${e.toString()}`);
+              }
+              stats.failedParses = stats.failedParses || 0;
+              stats.failedParses++;
+              while (lastTenFailedParses.length > 9) {
+                lastTenFailedParses.shift();
+              }
+              lastTenFailedParses.push(`${(new Date()).toString()} ${e.toString()} (${truncate(body)})`);
+              return;
+            }
+
+            const entry = canonicalize(json, timestamp);
+            const application = entry.application || "NONE"
+            stats.applications = stats.applications || {};
+            const appStats = stats.applications[application] = stats.applications[application] || {total: 0, bytes: 0};
+            appStats.total++;
+            appStats.bytes += body.length;
+
+            insertIntoDB(client, entry, body).then(result => {
               resp.statusCode = 201;
               resp.setHeader("Content-Type", "application/json");
               resp.end(JSON.stringify(result));
-            } catch (e) {
+              stats.inserts = stats.inserts || 0;
+              stats.inserts++;
+              appStats.inserts = appStats.inserts || 0;
+              appStats.inserts++;
+            }).catch(err => {
               resp.statusCode = 500;
-              resp.end(`Unable to parse to JSON: ${data}`);
-              console.error(`${logEntry()}: ${e.toString()}`);
-            }
-          })
-        } else {
+              resp.end(`Unable to insert into db: ${e.toString()}`);
+              if (log) {
+                console.error(`${logEntry()}: ${err.toString()}`);
+              }
+              stats.failedInserts = stats.failedInserts || 0;
+              stats.failedInserts++;
+              appStats.failedInserts = appStats.failedInserts || 0;
+              appStats.failedInserts++;
+            })
+          } else {
+            resp.statusCode = 404;
+            resp.end("Only POSTs to /api/logs are allowed");
+          }
+          break;
+
+        default:
           resp.statusCode = 404;
-          resp.end("Only POSTs to /api/logs are allowed");
+          resp.end(`Sorry, the requested page (${req.url}) was not found!`);
+          break;
+      }
+
+      if (resp.statusCode === 404) {
+        allRequestsStats.fileNotFound++;
+        while (lastTenFileNotFound.length > 9) {
+          lastTenFileNotFound.shift();
         }
-        break;
-
-      case "/favicon.ico":
-        resp.statusCode = 404;
-        resp.end("favicon.ico not supported");
-        break;
-
-      default:
-        resp.end("log-ingester")
-        break;
-    }
+        lastTenFileNotFound.push(logEntry());
+      }
+    })
   }
 
   const server = http.createServer(requestHandler)
-  server.listen(port, (err) => {
-    if (err) {
-      return console.log('something bad happened', err)
-    }
-    console.log(`server is listening on ${port}`)
-  });
-
-  let shuttingDown = false;
-  const shutdown = () => {
-    if (shuttingDown) {
-      return;
-    }
-    shuttingDown = true;
-
-    server.close(() => {
-      console.error("HTTP server closed, disconnecting from database");
-      disconnectDB(client);
-      process.exit(0);
-    });
-  }
 
   process.on("SIGTERM", () => {
     console.error("SIGTERM signal received! Shutting down");
-    shutdown();
+    shutdownServer({server, disconnectDB, client, log, exit: true});
   });
 
   process.on("SIGINT", () => {
     console.error("SIGINT signal received! Shutting down");
-    shutdown();
+    shutdownServer({server, disconnectDB, client, log, exit: true});
   });
 
-  return server;
+  return new Promise((resolve, reject) => {
+    server.listen(port, (err) => {
+      if (err) {
+        reject(err);
+      }
+      resolve({server, client, serverId});
+    });
+  })
 }
 
-module.exports = createServer;
+module.exports = {
+  createServer,
+  shutdownServer
+};

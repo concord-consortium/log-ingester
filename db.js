@@ -10,6 +10,9 @@ const fakeClient = {
 
 const connectDB = async (options) => {
   options = options || {};
+  if (options.fakeClient) {
+    return new Promise((resolve) => resolve(options.fakeClient))
+  }
   if (options.fake) {
     return new Promise((resolve) => resolve(fakeClient))
   }
@@ -25,23 +28,20 @@ const connectDB = async (options) => {
   return client;
 }
 
-const disconnectDB = (client) => {
+const disconnectDB = async (client) => {
   if (client) {
-    client.end();
+    await client.end();
   }
 }
 
 const insertIntoDB = async (client, entry, body) => {
   const {session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint} = entry;
 
-  const result = await client.query(`
-    INSERT INTO logs
-      (session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint)
-    VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, $8, $9, $10) RETURNING id`,
-      [session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint]
+  const result = await client.query("INSERT INTO logs (session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint) VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, $8, $9, $10) RETURNING id",
+    [session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint]
   );
 
-  return {id: result.rows[0].id, entry, body};
+  return {id: result.rows[0].id};
 }
 
 module.exports = {

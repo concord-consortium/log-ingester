@@ -15,4 +15,6 @@ const canonicalize = (rawData, timestamp) => {
   return data;
 };
 
-module.exports = canonicalize;
+module.exports = {
+  canonicalize
+};

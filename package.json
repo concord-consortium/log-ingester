@@ -4,7 +4,8 @@
   "description": "Simple node log ingester",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/concord-consortium/log-ingester/issues"
   },
-  "homepage": "https://github.com/concord-consortium/log-ingester#readme"
+  "homepage": "https://github.com/concord-consortium/log-ingester#readme",
+  "devDependencies": {
+    "jest": "^25.4.0",
+    "request-promise": "^4.2.5"
+  }
 }
