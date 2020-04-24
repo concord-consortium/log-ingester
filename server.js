@@ -1,5 +1,8 @@
 const http = require('http');
 const { canonicalize } = require('./canonicalize');
+const { getContainerInfo } = require("./get-container-info");
+
+const containerInfo = getContainerInfo();
 
 const shutdownServer = (options) => {
   const {server, disconnectDB, client, exit, log} = options;
@@ -93,7 +96,7 @@ const createServer = async (options) => {
       switch (req.url) {
         case "/stats":
           resp.setHeader("Content-Type", "application/json");
-          resp.end(JSON.stringify({serverId, startedAt, allRequestsStats, allowedRequestsStats: allowedRequestStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound}, null, 2));
+          resp.end(JSON.stringify({serverId, startedAt, allRequestsStats, allowedRequestsStats: allowedRequestStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
           break;
 
         case "/api/logs":

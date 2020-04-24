@@ -73,6 +73,8 @@ describe("server", () => {
       delete result.lastTenRequests;
       delete result.lastTenFailedParses;
       delete result.lastTenFileNotFound;
+      // containerInfo is tested in its own unit test
+      delete result.containerInfo;
       expect(result).toEqual({
         serverId,
         allRequestsStats: {
