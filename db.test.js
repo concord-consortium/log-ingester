@@ -43,7 +43,7 @@ describe("db", () => {
 
       expect(result).toEqual({id: 1})
       expect(fakeClient.query).toHaveBeenCalledWith(
-        "INSERT INTO logs (session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint) VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, $8, $9, $10) RETURNING id",
+        "INSERT INTO json_logs (id, session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint) VALUES (nextval('next_json_logs_id'), $1, $2, $3, $4, $5, to_timestamp($6), $7, $8, $9, $10) RETURNING id",
         ["session", "username", "application", "activity", "event", timestamp, {"bam": "boom", "foo": {"bar": {"baz": true}}}, {"other": "other", "some": "some", "thing": {"that": {"is": {"in": {"the": {"data": true}}}}}}, "event_value", "run_remote_endpoint"]
       );
     })

@@ -1,4 +1,4 @@
-// const { Client } = require('pg');
+const { Client } = require('pg');
 
 const fakeClient = {
   _nextId: 1,
@@ -37,7 +37,7 @@ const disconnectDB = async (client) => {
 const insertIntoDB = async (client, entry, body) => {
   const {session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint} = entry;
 
-  const result = await client.query("INSERT INTO logs (session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint) VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, $8, $9, $10) RETURNING id",
+  const result = await client.query("INSERT INTO json_logs (id, session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint) VALUES (nextval('next_json_logs_id'), $1, $2, $3, $4, $5, to_timestamp($6), $7, $8, $9, $10) RETURNING id",
     [session, username, application, activity, event, time, parameters, extras, event_value, run_remote_endpoint]
   );
 

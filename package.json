@@ -20,5 +20,8 @@
   "devDependencies": {
     "jest": "^25.4.0",
     "request-promise": "^4.2.5"
+  },
+  "dependencies": {
+    "pg": "^8.0.3"
   }
 }

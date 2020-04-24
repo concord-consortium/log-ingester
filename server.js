@@ -141,7 +141,7 @@ const createServer = async (options) => {
               appStats.inserts++;
             }).catch(err => {
               resp.statusCode = 500;
-              resp.end(`Unable to insert into db: ${e.toString()}`);
+              resp.end(`Unable to insert into db: ${err.toString()}`);
               if (log) {
                 console.error(`${logEntry()}: ${err.toString()}`);
               }
