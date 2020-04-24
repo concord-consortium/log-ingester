@@ -2,6 +2,7 @@
 
 Simple node-based log ingester
 
+[![Build Status](https://travis-ci.com/concord-consortium/log-ingester.svg?branch=master)](https://travis-ci.com/concord-consortium/log-ingester)
 
 ## Postgres Setup
 
