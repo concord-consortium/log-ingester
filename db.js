@@ -31,7 +31,16 @@ class DB {
     return {maxId: result.rows[0].max_id, _client: client};  // client is returned for testing it called release
   }
 
+  getPoolInfo() {
+    const {totalCount, idleCount, waitingCount} = this._getPool();
+    return {totalCount, idleCount, waitingCount};
+  }
+
   async _getClient() {
+    return await this._getPool().connect();
+  }
+
+  _getPool() {
     this.pool = this.pool || this.options.pool;
     if (!this.pool) {
       const connectionString = process.env.RDS_DATABASE_URL;
@@ -40,7 +49,7 @@ class DB {
       }
       this.pool = new Pool({connectionString, statement_timeout: 1000*10});
     }
-    return await this.pool.connect();
+    return this.pool;
   }
 }
 

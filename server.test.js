@@ -81,6 +81,11 @@ describe("server", () => {
         logsTable: {
           maxId: 3,
         },
+        dbPoolInfo: {
+          idleCount: 0,
+          totalCount: 1,
+          waitingCount: 0,
+        },
         allRequestsStats: {
           allowedRequests: 4,
           fileNotFound: 4,

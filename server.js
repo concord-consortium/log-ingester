@@ -96,8 +96,9 @@ const createServer = async (options) => {
       switch (req.url) {
         case "/stats":
           const sendStats = (maxId) => {
+            const dbPoolInfo = db.getPoolInfo();
             resp.setHeader("Content-Type", "application/json");
-            resp.end(JSON.stringify({serverId, startedAt, logsTable: { maxId }, allRequestsStats, allowedRequestsStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
+            resp.end(JSON.stringify({serverId, startedAt, logsTable: { maxId }, dbPoolInfo, allRequestsStats, allowedRequestsStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
           }
           db.getMaxId().then(result => sendStats(result.maxId)).catch(err => sendStats(maxId.toString()))
           break;

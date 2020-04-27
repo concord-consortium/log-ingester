@@ -9,8 +9,11 @@ const getTestPool = () => {
   }
   return {
     connect: jest.fn(() => new Promise(resolve => resolve(testClient))),
-    end: jest.fn()
-  }
+    end: jest.fn(),
+    totalCount: 1,
+    idleCount: 0,
+    waitingCount: 0
+    }
 }
 
 const getValidBody = (timestamp, options) => {
