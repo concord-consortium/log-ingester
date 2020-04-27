@@ -91,17 +91,21 @@ const createServer = async (options) => {
     requestId++;
 
     getBody(req).then(body => {
-      const logEntry = (includeDate) => {
-        const info = {serverId, requestId};
+      const formatStatsRequest = () => {
+        const info = {requestId};
         if (body !== undefined) {
           info.bytes = body.length
         }
-        return `${includeDate ? `${(new Date()).toString()} ` : ""}REQUEST: ${truncate(req.method)} ${truncate(req.url)} ${JSON.stringify(info)}`;
+        return `${(new Date()).toString()} ${truncate(req.method)} ${truncate(req.url)} ${JSON.stringify(info)}`;
       }
-      const logError = (errorType, err) => {
-        console.error(`${errorType}: ${req.method} ${req.url} ${err}`)
+      const logRequest = (data) => {
+        const baseInfo = {statusCode: resp.statusCode, serverId, requestId, method: req.method, url: req.url};
+        if (body !== undefined) {
+          baseInfo.bytes = body.length
+        }
+        console.log(JSON.stringify(Object.assign({}, baseInfo, data || {}, {stats: getStatsForLog()})));
       }
-      const logStats = (includeIds) => {
+      const getStatsForLog = (includeIds) => {
         let poolInfo;
         try {
           poolInfo = db.getPoolInfo();
@@ -109,7 +113,7 @@ const createServer = async (options) => {
           poolInfo = {error: err.toString()}
         }
         const dbInfo = { pool: poolInfo }
-        return includeIds ? {serverId, requestId, startedAt, dbInfo, allRequestsStats, allowedRequestsStats} : {startedAt, dbInfo, allRequestsStats, allowedRequestsStats}
+        return {startedAt, dbInfo, allRequestsStats, allowedRequestsStats}
       }
 
       allRequestsStats.total++;
@@ -117,10 +121,7 @@ const createServer = async (options) => {
       while (lastTenRequests.length > 9) {
         lastTenRequests.shift();
       }
-      lastTenRequests.push(logEntry(true));
-      if (log) {
-        console.log(logEntry());
-      }
+      lastTenRequests.push(formatStatsRequest());
 
       let stats;
       const requestKey = `${req.method.toUpperCase()} ${req.url}`;
@@ -165,7 +166,7 @@ const createServer = async (options) => {
               }
               lastTenFailedParses.push(`${(new Date()).toString()} ${err.toString()} (${truncate(body)})`);
               if (log) {
-                logError("PARSE_ERROR", JSON.stringify({serverId, requestId, error: err.toString(), body, stats: logStats()}));
+                logRequest({errorType: "PARSE_ERROR", error: err.toString(), body});
               }
               return;
             }
@@ -186,7 +187,7 @@ const createServer = async (options) => {
               appStats.inserts = appStats.inserts || 0;
               appStats.inserts++;
               if (log) {
-                console.log(`STATS: ${JSON.stringify(logStats(true))}`)
+                logRequest()
               }
             }).catch(err => {
               resp.statusCode = 500;
@@ -196,7 +197,7 @@ const createServer = async (options) => {
               appStats.failedInserts = appStats.failedInserts || 0;
               appStats.failedInserts++;
               if (log) {
-                logError("INSERT_ERROR", JSON.stringify({serverId, requestId, error: err.toString(), entry, stats: logStats()}));
+                logRequest({errorType: "INSERT_ERROR", error: err.toString(), entry});
               }
             })
           } else {
@@ -216,7 +217,13 @@ const createServer = async (options) => {
         while (lastTenFileNotFound.length > 9) {
           lastTenFileNotFound.shift();
         }
-        lastTenFileNotFound.push(logEntry(true));
+        lastTenFileNotFound.push(formatStatsRequest());
+      }
+
+      // wait to log the POST /api/logs until after the insert
+      const skipInitialLog = (req.url === "/api/logs") && (req.method === "POST");
+      if (log && !skipInitialLog) {
+        logRequest();
       }
     })
   }
