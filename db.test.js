@@ -40,9 +40,9 @@ describe("db", () => {
     })
   });
 
-  describe("getMaxId", () => {
+  describe("getInfo", () => {
     it("calls client query", async () => {
-      const result = await db.getMaxId();
+      const result = await db.getInfo();
       expect(result._client.query).toHaveBeenCalled();
       expect(result._client.release).toHaveBeenCalled();
     })

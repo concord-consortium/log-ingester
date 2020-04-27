@@ -23,17 +23,13 @@ class DB {
     return {id: result.rows[0].id, _client: client};  // client is returned for testing it called release
   }
 
-  async getMaxId() {
+  async getInfo() {
+    const {totalCount, idleCount, waitingCount} = this._getPool();
     const client = await this._getClient();
     const result = await client.query("SELECT MAX(id) as max_id FROM json_logs");
     client.release();
 
-    return {maxId: result.rows[0].max_id, _client: client};  // client is returned for testing it called release
-  }
-
-  getPoolInfo() {
-    const {totalCount, idleCount, waitingCount} = this._getPool();
-    return {totalCount, idleCount, waitingCount};
+    return {logsTable: { maxId: result.rows[0].max_id}, pool: { totalCount, idleCount, waitingCount }, _client: client};  // client is returned for testing it called release
   }
 
   async _getClient() {

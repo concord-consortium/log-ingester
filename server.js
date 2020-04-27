@@ -95,12 +95,12 @@ const createServer = async (options) => {
 
       switch (req.url) {
         case "/stats":
-          const sendStats = (maxId) => {
-            const dbPoolInfo = db.getPoolInfo();
+          const sendStats = (dbInfo) => {
+            delete dbInfo._client;
             resp.setHeader("Content-Type", "application/json");
-            resp.end(JSON.stringify({serverId, startedAt, logsTable: { maxId }, dbPoolInfo, allRequestsStats, allowedRequestsStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
+            resp.end(JSON.stringify({serverId, startedAt, dbInfo, allRequestsStats, allowedRequestsStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
           }
-          db.getMaxId().then(result => sendStats(result.maxId)).catch(err => sendStats(maxId.toString()))
+          db.getInfo().then(info => sendStats(info)).catch(err => sendStats({ error: err.toString() }))
           break;
 
         case "/api/logs":

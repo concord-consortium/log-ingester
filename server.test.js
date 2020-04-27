@@ -78,13 +78,15 @@ describe("server", () => {
       delete result.containerInfo;
       expect(result).toEqual({
         serverId,
-        logsTable: {
-          maxId: 3,
-        },
-        dbPoolInfo: {
-          idleCount: 0,
-          totalCount: 1,
-          waitingCount: 0,
+        dbInfo: {
+          logsTable: {
+            maxId: 3,
+          },
+          pool: {
+            idleCount: 0,
+            totalCount: 1,
+            waitingCount: 0,
+          }
         },
         allRequestsStats: {
           allowedRequests: 4,
