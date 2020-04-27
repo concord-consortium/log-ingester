@@ -43,7 +43,7 @@ const createServer = async (options) => {
     fileNotFound: 0,
     total: 0,
   };
-  const allowedRequestStats = {};
+  const allowedRequestsStats = {};
   const lastTenRequests = [];
   const lastTenFailedParses = [];
   const lastTenFileNotFound = [];
@@ -87,7 +87,7 @@ const createServer = async (options) => {
       let stats;
       const requestKey = `${req.method.toUpperCase()} ${req.url}`;
       if (allowedRequests.indexOf(requestKey) !== -1) {
-        stats = allowedRequestStats[requestKey] = allowedRequestStats[requestKey] || {};
+        stats = allowedRequestsStats[requestKey] = allowedRequestsStats[requestKey] || {};
         stats.total = stats.total || 0;
         stats.total++;
         allRequestsStats.allowedRequests++;
@@ -96,7 +96,7 @@ const createServer = async (options) => {
       switch (req.url) {
         case "/stats":
           resp.setHeader("Content-Type", "application/json");
-          resp.end(JSON.stringify({serverId, startedAt, allRequestsStats, allowedRequestsStats: allowedRequestStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
+          resp.end(JSON.stringify({serverId, startedAt, allRequestsStats, allowedRequestsStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
           break;
 
         case "/api/logs":
