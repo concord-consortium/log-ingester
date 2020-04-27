@@ -69,6 +69,22 @@ const createServer = async (options) => {
   }
 
   const requestHandler = (req, resp) => {
+    // allow CORS POSTs to the logs (the whole point of this app)
+    if (req.method === "OPTIONS") {
+      if (req.url === "/api/logs") {
+        resp.writeHead(204, {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Max-Age": 60 * 60 * 24
+        });
+        resp.end();
+      } else {
+        resp.statusCode = 405;
+        resp.end(`OPTIONS is not allowed for ${req.url}`);
+      }
+      return;
+    }
+
     getBody(req).then(body => {
       const logEntry = () => {
         return `${(new Date()).toString()} ${truncate(req.method)} ${truncate(req.url)}${body !== undefined ? ` (${body.length} bytes)` : ""}`;

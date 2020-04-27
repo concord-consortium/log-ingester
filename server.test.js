@@ -1,7 +1,6 @@
 const request = require("request-promise");
 
 const { getTestPool } = require("./test-helpers");
-const { DB } = require("./db");
 const { shutdownServer, createServer } = require("./server");
 const { getTimestamp } = require("./timestamp");
 const { getValidBody } = require("./test-helpers");
@@ -31,6 +30,17 @@ describe("server", () => {
       client = result.client;
       serverId = result.serverId;
       db = result.db;
+    });
+
+    it("succeeds for OPTIONs requests of /api/logs", () => {
+      // request-promise does not return response headers on OPTIONS requests
+      // https://github.com/request/request-promise/issues/74
+      // so we just test that it has a return property - if it failed it would reject
+      return expect(request({method: "OPTIONS", uri: url("/api/logs"), resolveWithFullResponse :true})).toHaveProperty("method", "OPTIONS");
+    });
+
+    it("fails for OPTIONs requests of any other page than /api/logs", () => {
+      return expect(request({method: "OPTIONS", uri: url("/")})).rejects.toHaveProperty("message", `405 - "OPTIONS is not allowed for /"`);
     });
 
     it("returns 404 for homepage", () => {
