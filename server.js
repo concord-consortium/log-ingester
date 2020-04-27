@@ -50,10 +50,13 @@ const createServer = async (options) => {
 
   const db = new DB({ pool });
 
+  let requestId = 0;
+
   const allowedRequests = ["GET /ping", "GET /stats", "POST /api/logs"]
 
   const truncate = (s) => s.length < 128 ? s : `${s.substr(0, 128)}... (TRUNCATED)`;
 
+  // TODO: determine max POST body size and time limit
   const getBody = async (req) => {
     return new Promise((resolve) => {
       if ((req.method === "POST") && (req.url === "/api/logs")) {
@@ -85,9 +88,28 @@ const createServer = async (options) => {
       return;
     }
 
+    requestId++;
+
     getBody(req).then(body => {
-      const logEntry = () => {
-        return `${(new Date()).toString()} ${truncate(req.method)} ${truncate(req.url)}${body !== undefined ? ` (${body.length} bytes)` : ""}`;
+      const logEntry = (includeDate) => {
+        const info = {serverId, requestId};
+        if (body !== undefined) {
+          info.bytes = body.length
+        }
+        return `${includeDate ? `${(new Date()).toString()} ` : ""}REQUEST: ${truncate(req.method)} ${truncate(req.url)} ${JSON.stringify(info)}`;
+      }
+      const logError = (errorType, err) => {
+        console.error(`${errorType}: ${req.method} ${req.url} ${err}`)
+      }
+      const logStats = (includeIds) => {
+        let poolInfo;
+        try {
+          poolInfo = db.getPoolInfo();
+        } catch (err) {
+          poolInfo = {error: err.toString()}
+        }
+        const dbInfo = { pool: poolInfo }
+        return includeIds ? {serverId, requestId, startedAt, dbInfo, allRequestsStats, allowedRequestsStats} : {startedAt, dbInfo, allRequestsStats, allowedRequestsStats}
       }
 
       allRequestsStats.total++;
@@ -95,7 +117,7 @@ const createServer = async (options) => {
       while (lastTenRequests.length > 9) {
         lastTenRequests.shift();
       }
-      lastTenRequests.push(logEntry());
+      lastTenRequests.push(logEntry(true));
       if (log) {
         console.log(logEntry());
       }
@@ -118,7 +140,7 @@ const createServer = async (options) => {
           const sendStats = (dbInfo) => {
             delete dbInfo._client;
             resp.setHeader("Content-Type", "application/json");
-            resp.end(JSON.stringify({serverId, startedAt, dbInfo, allRequestsStats, allowedRequestsStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
+            resp.end(JSON.stringify({serverId, requestId, startedAt, dbInfo, allRequestsStats, allowedRequestsStats, lastTenRequests, lastTenFailedParses, lastTenFileNotFound, containerInfo}, null, 2));
           }
           db.getInfo().then(info => sendStats(info)).catch(err => sendStats({ error: err.toString() }))
           break;
@@ -133,18 +155,18 @@ const createServer = async (options) => {
 
             try {
               json = JSON.parse(body);
-            } catch (e) {
+            } catch (err) {
               resp.statusCode = 500;
-              resp.end(`Unable to parse body: ${e.toString()}`);
-              if (log) {
-                console.error(`${logEntry()}: ${e.toString()}`);
-              }
+              resp.end(`Unable to parse body: ${err.toString()}`);
               stats.failedParses = stats.failedParses || 0;
               stats.failedParses++;
               while (lastTenFailedParses.length > 9) {
                 lastTenFailedParses.shift();
               }
-              lastTenFailedParses.push(`${(new Date()).toString()} ${e.toString()} (${truncate(body)})`);
+              lastTenFailedParses.push(`${(new Date()).toString()} ${err.toString()} (${truncate(body)})`);
+              if (log) {
+                logError("PARSE_ERROR", JSON.stringify({serverId, requestId, error: err.toString(), body, stats: logStats()}));
+              }
               return;
             }
 
@@ -163,16 +185,19 @@ const createServer = async (options) => {
               stats.inserts++;
               appStats.inserts = appStats.inserts || 0;
               appStats.inserts++;
+              if (log) {
+                console.log(`STATS: ${JSON.stringify(logStats(true))}`)
+              }
             }).catch(err => {
               resp.statusCode = 500;
               resp.end(`Unable to insert into db: ${err.toString()}`);
-              if (log) {
-                console.error(`${logEntry()}: ${err.toString()}`);
-              }
               stats.failedInserts = stats.failedInserts || 0;
               stats.failedInserts++;
               appStats.failedInserts = appStats.failedInserts || 0;
               appStats.failedInserts++;
+              if (log) {
+                logError("INSERT_ERROR", JSON.stringify({serverId, requestId, error: err.toString(), entry, stats: logStats()}));
+              }
             })
           } else {
             resp.statusCode = 404;
@@ -191,7 +216,7 @@ const createServer = async (options) => {
         while (lastTenFileNotFound.length > 9) {
           lastTenFileNotFound.shift();
         }
-        lastTenFileNotFound.push(logEntry());
+        lastTenFileNotFound.push(logEntry(true));
       }
     })
   }

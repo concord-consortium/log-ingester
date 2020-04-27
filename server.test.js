@@ -93,6 +93,7 @@ describe("server", () => {
       delete result.containerInfo;
       expect(result).toEqual({
         serverId,
+        requestId: 9,
         dbInfo: {
           logsTable: {
             maxId: 3,
@@ -133,17 +134,17 @@ describe("server", () => {
 
       expect(startedAt).not.toBe(undefined);
 
-      const reqs = lastTenRequests.map((req) => req.match(/ ((GET|POST) (.+))$/)[1]);
+      const reqs = lastTenRequests.map((req) => req.match(/ ((GET|POST) ([^\s]+))/)[1]);
       expect(lastTenRequests.length).toBe(9);
       expect(lastTenRequests.length).toBe(reqs.length);
-      expect(reqs).toEqual([ 'GET /', 'GET /favicon.ico', 'GET /foo/bar/baz', 'GET /api/logs', 'POST /api/logs (20 bytes)', 'POST /api/logs (337 bytes)', 'POST /api/logs (337 bytes)', 'GET /ping', 'GET /stats' ]);
+      expect(reqs).toEqual([ 'GET /', 'GET /favicon.ico', 'GET /foo/bar/baz', 'GET /api/logs', 'POST /api/logs', 'POST /api/logs', 'POST /api/logs', 'GET /ping', 'GET /stats' ]);
 
       const parses = lastTenFailedParses.map((parse) => parse.match(/\) (.+)$/)[1]);
       expect(lastTenFailedParses.length).toBe(1);
       expect(lastTenFailedParses.length).toBe(parses.length);
       expect(parses[0]).toEqual('SyntaxError: Unexpected token * in JSON at position 0 (*** invalid json ***)')
 
-      const notFoundReqs = lastTenFileNotFound.map((req) => req.match(/ ((GET|POST) (.+))$/)[1]);
+      const notFoundReqs = lastTenFileNotFound.map((req) => req.match(/ ((GET|POST) ([^\s]+))/)[1]);
       expect(lastTenFileNotFound.length).toBe(4);
       expect(lastTenFileNotFound.length).toBe(notFoundReqs.length);
       expect(notFoundReqs).toEqual([ 'GET /', 'GET /favicon.ico', 'GET /foo/bar/baz', 'GET /api/logs' ]);
