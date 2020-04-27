@@ -50,7 +50,7 @@ const createServer = async (options) => {
 
   const db = new DB({ pool });
 
-  const allowedRequests = ["GET /stats", "POST /api/logs"]
+  const allowedRequests = ["GET /ping", "GET /stats", "POST /api/logs"]
 
   const truncate = (s) => s.length < 128 ? s : `${s.substr(0, 128)}... (TRUNCATED)`;
 
@@ -94,6 +94,10 @@ const createServer = async (options) => {
       }
 
       switch (req.url) {
+        case "/ping":
+          resp.end(`pong: ${(new Date()).toString()}`);
+          break;
+
         case "/stats":
           const sendStats = (dbInfo) => {
             delete dbInfo._client;

@@ -63,6 +63,11 @@ describe("server", () => {
       expect(result2.id).toEqual(2);
     });
 
+    it("returns pong on the /ping page", async () => {
+      const result = await request(url("/ping"));
+      expect(result).toContain("pong");
+    });
+
     it("returns stats on the /stats page", async () => {
       const result = JSON.parse(await request(url("/stats")));
       const startedAt = result.startedAt;
@@ -89,9 +94,9 @@ describe("server", () => {
           }
         },
         allRequestsStats: {
-          allowedRequests: 4,
+          allowedRequests: 5,
           fileNotFound: 4,
-          total: 8
+          total: 9
         },
         allowedRequestsStats: {
           "POST /api/logs": {
@@ -110,15 +115,18 @@ describe("server", () => {
           "GET /stats": {
             total: 1
           },
+          "GET /ping": {
+            total: 1
+          },
         }
       });
 
       expect(startedAt).not.toBe(undefined);
 
       const reqs = lastTenRequests.map((req) => req.match(/ ((GET|POST) (.+))$/)[1]);
-      expect(lastTenRequests.length).toBe(8);
+      expect(lastTenRequests.length).toBe(9);
       expect(lastTenRequests.length).toBe(reqs.length);
-      expect(reqs).toEqual([ 'GET /', 'GET /favicon.ico', 'GET /foo/bar/baz', 'GET /api/logs', 'POST /api/logs (20 bytes)', 'POST /api/logs (337 bytes)', 'POST /api/logs (337 bytes)', 'GET /stats' ]);
+      expect(reqs).toEqual([ 'GET /', 'GET /favicon.ico', 'GET /foo/bar/baz', 'GET /api/logs', 'POST /api/logs (20 bytes)', 'POST /api/logs (337 bytes)', 'POST /api/logs (337 bytes)', 'GET /ping', 'GET /stats' ]);
 
       const parses = lastTenFailedParses.map((parse) => parse.match(/\) (.+)$/)[1]);
       expect(lastTenFailedParses.length).toBe(1);
