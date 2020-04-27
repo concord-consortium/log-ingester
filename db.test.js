@@ -40,6 +40,14 @@ describe("db", () => {
     })
   });
 
+  describe("getMaxId", () => {
+    it("calls client query", async () => {
+      const result = await db.getMaxId();
+      expect(result._client.query).toHaveBeenCalled();
+      expect(result._client.release).toHaveBeenCalled();
+    })
+  });
+
   describe("disconnect", () => {
 
     it("does not create a pool or call pool.end() if there was no query", async () => {

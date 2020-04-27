@@ -2,8 +2,8 @@
 const getTestPool = () => {
   let nextId = 1;
   const testClient = {
-    query: jest.fn(() => new Promise(resolve => resolve({
-      rows: [{id: nextId++}]
+    query: jest.fn((sql) => new Promise(resolve => resolve({
+      rows: [sql.match(/^INSERT/) ? {id: nextId++} : {max_id: nextId} ]
     }))),
     release: jest.fn()
   }

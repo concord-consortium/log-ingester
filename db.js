@@ -23,6 +23,14 @@ class DB {
     return {id: result.rows[0].id, _client: client};  // client is returned for testing it called release
   }
 
+  async getMaxId() {
+    const client = await this._getClient();
+    const result = await client.query("SELECT MAX(id) as max_id FROM json_logs");
+    client.release();
+
+    return {maxId: result.rows[0].max_id, _client: client};  // client is returned for testing it called release
+  }
+
   async _getClient() {
     this.pool = this.pool || this.options.pool;
     if (!this.pool) {

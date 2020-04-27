@@ -78,6 +78,9 @@ describe("server", () => {
       delete result.containerInfo;
       expect(result).toEqual({
         serverId,
+        logsTable: {
+          maxId: 3,
+        },
         allRequestsStats: {
           allowedRequests: 4,
           fileNotFound: 4,
@@ -114,6 +117,11 @@ describe("server", () => {
       expect(lastTenFailedParses.length).toBe(1);
       expect(lastTenFailedParses.length).toBe(parses.length);
       expect(parses[0]).toEqual('SyntaxError: Unexpected token * in JSON at position 0 (*** invalid json ***)')
+
+      const notFoundReqs = lastTenFileNotFound.map((req) => req.match(/ ((GET|POST) (.+))$/)[1]);
+      expect(lastTenFileNotFound.length).toBe(4);
+      expect(lastTenFileNotFound.length).toBe(notFoundReqs.length);
+      expect(notFoundReqs).toEqual([ 'GET /', 'GET /favicon.ico', 'GET /foo/bar/baz', 'GET /api/logs' ]);
     });
 
     afterAll(async () => {
