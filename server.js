@@ -1,23 +1,24 @@
 const http = require('http');
 const { canonicalize } = require('./canonicalize');
 const { getContainerInfo } = require("./get-container-info");
+const { DB } = require("./db");
 
 const containerInfo = getContainerInfo();
 
 const shutdownServer = (options) => {
-  const {server, disconnectDB, client, exit, log} = options;
+  const {server, db, exit, log} = options;
   const logMessage = log ? (message) => console.log(message) : () => undefined;
 
   return new Promise(resolve => {
     if (server.shuttingDown) {
-      resolve();
+      return resolve();
     }
     server.shuttingDown = true;
 
     logMessage("Shutting down server...");
-    server.close(async () => {
+    server.close(() => {
       logMessage("HTTP server closed, disconnecting from database");
-      await disconnectDB(client);
+      db.disconnect()
       if (exit) {
         logMessage("Exiting...");
         process.exit(0);
@@ -29,11 +30,10 @@ const shutdownServer = (options) => {
 
 const createServer = async (options) => {
 
-  // all options are required expect for fakeClient
   options = options || {};
-  const {port, connectDB, disconnectDB, insertIntoDB, fakeClient, log} = options;
-  if (!port || !connectDB || !disconnectDB || !insertIntoDB) {
-    throw new Error("Missing required options!");
+  const {port, pool, log} = options;
+  if (!port) {
+    throw new Error("Missing required port option!");
   }
 
   const startedAt = (new Date()).toString();
@@ -48,7 +48,7 @@ const createServer = async (options) => {
   const lastTenFailedParses = [];
   const lastTenFileNotFound = [];
 
-  const client = await connectDB({ fakeClient });
+  const db = new DB({ pool });
 
   const allowedRequests = ["GET /stats", "POST /api/logs"]
 
@@ -131,10 +131,10 @@ const createServer = async (options) => {
             appStats.total++;
             appStats.bytes += body.length;
 
-            insertIntoDB(client, entry, body).then(result => {
+            db.insert(entry).then(result => {
               resp.statusCode = 201;
               resp.setHeader("Content-Type", "application/json");
-              resp.end(JSON.stringify(result));
+              resp.end(JSON.stringify({id: result.id, size: body.length}));
               stats.inserts = stats.inserts || 0;
               stats.inserts++;
               appStats.inserts = appStats.inserts || 0;
@@ -176,12 +176,12 @@ const createServer = async (options) => {
 
   process.on("SIGTERM", () => {
     console.error("SIGTERM signal received! Shutting down");
-    shutdownServer({server, disconnectDB, client, log, exit: true});
+    shutdownServer({server, db, log, exit: true});
   });
 
   process.on("SIGINT", () => {
     console.error("SIGINT signal received! Shutting down");
-    shutdownServer({server, disconnectDB, client, log, exit: true});
+    shutdownServer({server, db, log, exit: true});
   });
 
   return new Promise((resolve, reject) => {
@@ -189,7 +189,7 @@ const createServer = async (options) => {
       if (err) {
         reject(err);
       }
-      resolve({server, client, serverId});
+      resolve({server, db, serverId});
     });
   })
 }

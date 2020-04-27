@@ -1,7 +1,7 @@
 const request = require("request-promise");
 
-const { getFakeClient } = require("./test-helpers");
-const { connectDB, disconnectDB, insertIntoDB } = require("./db");
+const { getTestPool } = require("./test-helpers");
+const { DB } = require("./db");
 const { shutdownServer, createServer } = require("./server");
 const { getTimestamp } = require("./timestamp");
 const { getValidBody } = require("./test-helpers");
@@ -10,26 +10,27 @@ describe("server", () => {
 
   it("fails without the required options", () => {
     expect.assertions(1);
-    return expect(createServer()).rejects.toHaveProperty("message", "Missing required options!");
+    return expect(createServer()).rejects.toHaveProperty("message", "Missing required port option!");
   });
 
   describe("createServer", () => {
     const port = 12345;
-    let fakeClient;
     let server;
     let client;
     let serverId;
+    let db;
 
     const url = (suffix) => `http://localhost:${port}${suffix}`;
 
     beforeAll(async () => {
-      fakeClient = getFakeClient();
+      pool = getTestPool();
       try {
-        result = await createServer({ port, connectDB, disconnectDB, insertIntoDB, fakeClient });
+        result = await createServer({ port, pool });
       } catch (e) { console.error(e) }
       server = result.server;
       client = result.client;
       serverId = result.serverId;
+      db = result.db;
     });
 
     it("returns 404 for homepage", () => {
@@ -58,8 +59,8 @@ describe("server", () => {
       const body = getValidBody(timestamp);
       const result1 = await request({method: "POST", uri: url("/api/logs"), body, json: true});
       const result2 = await request({method: "POST", uri: url("/api/logs"), body, json: true});
-      expect(result1).toEqual({id: 1});
-      expect(result2).toEqual({id: 2});
+      expect(result1.id).toEqual(1);
+      expect(result2.id).toEqual(2);
     });
 
     it("returns stats on the /stats page", async () => {
@@ -117,7 +118,7 @@ describe("server", () => {
 
     afterAll(async () => {
       try {
-        await shutdownServer({server, client, disconnectDB, exit: false});
+        await shutdownServer({server, db, exit: false});
       } catch (e) { console.error(e) }
     });
 

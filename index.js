@@ -1,23 +1,26 @@
 
 const { createServer } = require("./server");
-const { connectDB, disconnectDB, insertIntoDB } = require("./db");
 
 const port = process.env.PORT || 3000;
 
-let fakeClient;
+let pool;
 if (process.argv[2] === "fake") {
   let nextId = 1;
-  fakeClient = {
+  const client = {
     query: () => new Promise(resolve => resolve({
       rows: [{id: nextId++}]
     })),
-    end: () => undefined
+    release: () => undefined
   };
+  pool = {
+    connect: new Promise(resolve => resolve(client)),
+    end: () => undefined
+  }
 }
 
 const startServer = async () => {
   try {
-    await createServer({ port, connectDB, disconnectDB, insertIntoDB, fakeClient, exit: true, log: true });
+    await createServer({ port, pool, exit: true, log: true });
     console.log(`Server is listening on port ${port}`);
   } catch (e) {
     console.error(e.toString());

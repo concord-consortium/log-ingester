@@ -1,12 +1,17 @@
-const getFakeClient = () => {
+
+const getTestPool = () => {
   let nextId = 1;
-  return {
+  const testClient = {
     query: jest.fn(() => new Promise(resolve => resolve({
       rows: [{id: nextId++}]
     }))),
+    release: jest.fn()
+  }
+  return {
+    connect: jest.fn(() => new Promise(resolve => resolve(testClient))),
     end: jest.fn()
   }
-};
+}
 
 const getValidBody = (timestamp, options) => {
   options = options || {};
@@ -44,6 +49,6 @@ const getValidBody = (timestamp, options) => {
 };
 
 module.exports = {
-  getFakeClient,
+  getTestPool,
   getValidBody,
 };
