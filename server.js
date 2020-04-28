@@ -220,8 +220,8 @@ const createServer = async (options) => {
         lastTenFileNotFound.push(formatStatsRequest());
       }
 
-      // wait to log the POST /api/logs until after the insert
-      const skipInitialLog = (req.url === "/api/logs") && (req.method === "POST");
+      // don't log pings and wait to log the POST /api/logs until after the insert
+      const skipInitialLog = (req.url === "/ping") || ((req.url === "/api/logs") && (req.method === "POST"));
       if (log && !skipInitialLog) {
         logRequest();
       }
