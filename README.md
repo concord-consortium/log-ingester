@@ -39,6 +39,7 @@ CREATE SEQUENCE next_json_logs_id START 1;
 ### Create Indices
 
 ```
+CREATE INDEX index_json_logs_on_id ON json_logs USING btree (id);
 CREATE INDEX index_json_logs_on_activity ON json_logs USING btree (activity);
 CREATE INDEX index_json_logs_on_application ON json_logs USING btree (application);
 CREATE INDEX index_json_logs_on_event ON json_logs USING btree (event);
